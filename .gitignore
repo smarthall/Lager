@@ -1,6 +1,6 @@
 *.log
 *.pot
 *.pyc
-local_settings.py
+Lager/local_settings.py
 Lager.db
 *.swp
