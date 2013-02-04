@@ -4,3 +4,4 @@
 Lager/local_settings.py
 Lager.db
 *.swp
+tmp/*
