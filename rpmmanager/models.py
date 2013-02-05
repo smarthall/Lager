@@ -1,4 +1,5 @@
 import sys, os, os.path, rpm
+import subprocess
 
 from django.db import models
 from django.contrib import admin
@@ -86,7 +87,21 @@ admin.site.register(Repository, RepositoryAdmin)
 
 @receiver(post_save, sender=Repository)
 def repository_processor(sender, instance, **kwargs):
-  pass
+  basedir = os.path.join(settings.MEDIA_ROOT, 'rpmmanager', instance.name)
+
+  # Create relevent directory if it doesnt exist
+  if not os.path.exists(basedir):
+    os.makedirs(basedir)
+
+  # Link the RPMS in, removing any that no longer exist
+  for rpm in instance.rpms.all():
+    rpmpath = os.path.join(settings.MEDIA_ROOT, rpm.get_file().name)
+    newpath = os.path.join(basedir, os.path.basename(rpm.get_file().name))
+    if not os.path.exists(newpath):
+      os.link(rpmpath, newpath)
+
+  # Prepare the repository
+  subprocess.call(['createrepo', '-q', '--update', '--baseurl', basedir, basedir])
 
 ###### RPMinRepo ######
 class RPMinRepo(models.Model):
