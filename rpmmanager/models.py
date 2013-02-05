@@ -31,7 +31,29 @@ class RPM(models.Model):
     return self.name + '-' + self.version + '-' + self.release + '.' + self.arch
 
   def get_file(self):
-    return self.procblob.file
+    return self.procblob.blob.file
+
+  def process_rpm(self):
+    ts = rpm.ts()
+    rpm_file = os.path.join(settings.MEDIA_ROOT, self.get_file().name)
+    fdno = os.open(rpm_file, os.O_RDONLY)
+    try:
+        hdr = ts.hdrFromFdno(fdno)
+    except rpm.error:
+        fdno = os.open(rpm_file, os.O_RDONLY)
+        ts.setVSFlags(rpm._RPMVSF_NOSIGNATURES)
+        hdr = ts.hdrFromFdno(fdno)
+    os.close(fdno)
+    self.name = hdr[rpm.RPMTAG_NAME]
+    self.version = hdr[rpm.RPMTAG_VERSION]
+    self.release = hdr[rpm.RPMTAG_RELEASE]
+    self.epoch = hdr[rpm.RPMTAG_EPOCH]
+    self.arch = hdr[rpm.RPMTAG_ARCH]
+
+  def save(self, *args, **kwargs):
+    self.process_rpm()
+    super(RPM, self).save(*args, **kwargs) # Call the "real" save() method.
+
 
 @receiver(post_save, sender=DataBlob)
 def blob_processor(sender, instance, **kwargs):
@@ -39,25 +61,6 @@ def blob_processor(sender, instance, **kwargs):
     new = RPM()
     new.procblob = instance
     new.save()
-
-@receiver(pre_save, sender=RPM)
-def rpm_processor(sender, instance, **kwargs):
-  """Set the RPM file referred to by the model"""
-  ts = rpm.ts()
-  rpm_file = os.path.join(settings.MEDIA_ROOT, instance.get_file().name)
-  fdno = os.open(rpm_file, os.O_RDONLY)
-  try:
-      hdr = ts.hdrFromFdno(fdno)
-  except rpm.error:
-      fdno = os.open(rpm_file, os.O_RDONLY)
-      ts.setVSFlags(rpm._RPMVSF_NOSIGNATURES)
-      hdr = ts.hdrFromFdno(fdno)
-  os.close(fdno)
-  instance.name = hdr[rpm.RPMTAG_NAME]
-  instance.version = hdr[rpm.RPMTAG_VERSION]
-  instance.release = hdr[rpm.RPMTAG_RELEASE]
-  instance.epoch = hdr[rpm.RPMTAG_EPOCH]
-  instance.arch = hdr[rpm.RPMTAG_ARCH]
 
 class RPMAdmin(admin.ModelAdmin):
   readonly_fields = ['gc', 'name', 'version', 'release', 'epoch', 'arch']
