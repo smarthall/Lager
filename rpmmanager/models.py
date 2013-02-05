@@ -62,12 +62,6 @@ def blob_processor(sender, instance, **kwargs):
     new.procblob = instance
     new.save()
 
-class RPMAdmin(admin.ModelAdmin):
-  readonly_fields = ['gc', 'name', 'version', 'release', 'epoch', 'arch']
-  list_display = ['name', 'arch', 'version', 'release', 'protected']
-
-admin.site.register(RPM, RPMAdmin)
-
 @receiver(post_delete, sender=RPM)
 def procblob_cleaner(sender, instance, **kwargs):
   try:
@@ -119,12 +113,6 @@ class Repository(models.Model):
         self.updated = timezone.now()
     super(Repository, self).save(*args, **kwargs) # Call the "real" save() method.
 
-class RepositoryAdmin(admin.ModelAdmin):
-  list_display = ['name', 'suspended', 'pushed', 'modified']
-  exclude = ['pushed',]
-
-admin.site.register(Repository, RepositoryAdmin)
-
 @receiver(post_delete, sender=Repository)
 def repository_cleaner(sender, instance, **kwargs):
   shutil.rmtree(instance.get_basedir())
@@ -138,12 +126,29 @@ class RPMinRepo(models.Model):
   class Meta:
     unique_together = (('rpm', 'repo'),)
 
-class RPMinRepoAdmin(admin.ModelAdmin):
-  list_display = ['rpm', 'repo', 'added']
-
-admin.site.register(RPMinRepo, RPMinRepoAdmin)
-
 @receiver(post_save, sender=RPMinRepo)
 def reposave_processor(sender, instance, **kwargs):
   instance.repo.save()
+
+# Admin objects
+class RPMinRepoInline(admin.TabularInline):
+  model = RPMinRepo
+  extra = 1
+
+class RPMAdmin(admin.ModelAdmin):
+  readonly_fields = ['gc', 'name', 'version', 'release', 'epoch', 'arch']
+  list_display = ['name', 'arch', 'version', 'release', 'protected']
+  inlines = (RPMinRepoInline, )
+
+class RPMinRepoAdmin(admin.ModelAdmin):
+  list_display = ['rpm', 'repo', 'added']
+
+class RepositoryAdmin(admin.ModelAdmin):
+  list_display = ['name', 'suspended', 'pushed', 'modified']
+  exclude = ['pushed',]
+  inlines = (RPMinRepoInline, )
+
+admin.site.register(RPM, RPMAdmin)
+admin.site.register(RPMinRepo, RPMinRepoAdmin)
+admin.site.register(Repository, RepositoryAdmin)
 
