@@ -3,6 +3,7 @@ import hashlib
 import magic
 
 from django.db import models
+from django.contrib import admin
 from django.forms import ModelForm
 from django.dispatch import receiver
 from django.db.models.signals import post_delete, post_save
@@ -53,9 +54,12 @@ class ProcessedBlob(models.Model):
   def __unicode__(self):
     return self.blob.file.name
 
+class ProcessedBlobAdmin(admin.ModelAdmin):
+  list_display = ('filename', 'mimetype', 'hashtype', 'hash')
+
 @receiver(post_delete, sender=ProcessedBlob)
-def blob_processor(sender, instance, **kwargs):
+def blob_cleaner(sender, instance, **kwargs):
   instance.blob.delete()
 
-admin.site.register(ProcessedBlob)
+admin.site.register(ProcessedBlob, ProcessedBlobAdmin)
 
