@@ -60,6 +60,9 @@ class ProcessedBlob(models.Model):
   def __unicode__(self):
     return self.blob.file.name
 
+  def get_file(self):
+    self.blob.file
+
 class ProcessedBlobAdmin(admin.ModelAdmin):
   list_display = ('filename', 'mimetype', 'hashtype', 'hash')
 

@@ -121,6 +121,7 @@ INSTALLED_APPS = (
     'south',
     'Lager',
     'blobstore',
+    'rpmmanager',
 )
 
 # A sample logging configuration. The only tangible logging
