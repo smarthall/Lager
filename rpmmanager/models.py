@@ -31,7 +31,7 @@ class RPM(models.Model):
     return self.name + '-' + self.version + '-' + self.release + '.' + self.arch
 
   def get_file(self):
-    return self.procblob.blob.file
+    return self.procblob.file
 
 @receiver(post_save, sender=DataBlob)
 def blob_processor(sender, instance, **kwargs):
