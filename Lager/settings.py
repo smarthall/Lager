@@ -151,6 +151,8 @@ LOGGING = {
     }
 }
 
+HASHMETHOD = 'sha256'
+
 try:
   from local_settings import *
 except:
