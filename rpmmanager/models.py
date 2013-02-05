@@ -52,6 +52,7 @@ def rpm_processor(sender, instance, **kwargs):
 
 class RPMAdmin(admin.ModelAdmin):
   readonly_fields = ['gc', 'name', 'version', 'release', 'epoch', 'arch']
+  list_display = ['name', 'arch', 'version', 'release', 'protected']
 
 admin.site.register(RPM, RPMAdmin)
 
