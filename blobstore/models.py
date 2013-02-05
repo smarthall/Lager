@@ -1,3 +1,4 @@
+import os
 import os.path
 import hashlib
 import magic
@@ -9,6 +10,7 @@ from django.dispatch import receiver
 from django.db.models.signals import post_delete, post_save
 from django.contrib import admin
 from django.conf import settings
+from django.core import exceptions
 
 ##### Blob Model #####
 class Blob(models.Model):
@@ -43,6 +45,10 @@ def blob_processor(sender, instance, **kwargs):
   processed.filename = os.path.basename(instance.file.name)
   processed.save()
 
+@receiver(post_delete, sender=Blob)
+def blob_filecleaner(sender, instance, **kwargs):
+  os.unlink(os.path.join(settings.MEDIA_ROOT, instance.file.name))
+
 ##### ProcessedBlob Model #####
 class ProcessedBlob(models.Model):
   blob = models.OneToOneField(Blob, primary_key=True)
@@ -59,7 +65,10 @@ class ProcessedBlobAdmin(admin.ModelAdmin):
 
 @receiver(post_delete, sender=ProcessedBlob)
 def blob_cleaner(sender, instance, **kwargs):
-  instance.blob.delete()
+  try:
+    instance.blob.delete()
+  except exceptions.ObjectDoesNotExist:
+    pass
 
 admin.site.register(ProcessedBlob, ProcessedBlobAdmin)
 
