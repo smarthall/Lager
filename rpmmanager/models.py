@@ -7,6 +7,7 @@ from django.dispatch import receiver
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.core import exceptions
 from django.conf import settings
+from django.utils import timezone
 
 from blobstore.models import ProcessedBlob
 
@@ -73,7 +74,7 @@ def procblob_cleaner(sender, instance, **kwargs):
 
 ###### Repo ######
 class Repository(models.Model):
-  name = models.CharField(max_length=64)
+  name = models.CharField(max_length=64, unique=True)
   suspended = models.BooleanField(default=False)
   pushed = models.DateTimeField(blank=True,null=True)
   modified = models.DateTimeField(auto_now=True)
@@ -86,32 +87,44 @@ class Repository(models.Model):
   def __unicode__(self):
     return self.name
 
+  def to_disk(self):
+    if self.suspended:
+      return False
+
+    basedir = self.get_basedir()
+
+    # Create relevent directory if it doesnt exist
+    if not os.path.exists(basedir):
+      os.makedirs(basedir)
+
+    # Link the RPMS in, removing any that no longer exist
+    for rpm in self.rpms.all():
+      rpmpath = os.path.join(settings.MEDIA_ROOT, rpm.get_file().name)
+      newpath = os.path.join(basedir, os.path.basename(rpm.get_file().name))
+      if not os.path.exists(newpath):
+        os.link(rpmpath, newpath)
+
+    # Prepare the repository
+    subprocess.call(['createrepo', '-q', '--update', '--baseurl', basedir, basedir])
+
+    # Success!
+    return True
+
+  def save(self, *args, **kwargs):
+    if not self.id == None:
+      if self.to_disk():
+        self.updated = timezone.now()
+    super(Repository, self).save(*args, **kwargs) # Call the "real" save() method.
+
 class RepositoryAdmin(admin.ModelAdmin):
   list_display = ['name', 'suspended', 'pushed', 'modified']
+  exclude = ['pushed',]
 
 admin.site.register(Repository, RepositoryAdmin)
 
 @receiver(post_delete, sender=Repository)
 def repository_cleaner(sender, instance, **kwargs):
   shutil.rmtree(instance.get_basedir())
-
-@receiver(post_save, sender=Repository)
-def repository_processor(sender, instance, **kwargs):
-  basedir = instance.get_basedir()
-
-  # Create relevent directory if it doesnt exist
-  if not os.path.exists(basedir):
-    os.makedirs(basedir)
-
-  # Link the RPMS in, removing any that no longer exist
-  for rpm in instance.rpms.all():
-    rpmpath = os.path.join(settings.MEDIA_ROOT, rpm.get_file().name)
-    newpath = os.path.join(basedir, os.path.basename(rpm.get_file().name))
-    if not os.path.exists(newpath):
-      os.link(rpmpath, newpath)
-
-  # Prepare the repository
-  subprocess.call(['createrepo', '-q', '--update', '--baseurl', basedir, basedir])
 
 ###### RPMinRepo ######
 class RPMinRepo(models.Model):
