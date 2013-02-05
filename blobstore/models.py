@@ -3,8 +3,9 @@ import hashlib
 import magic
 
 from django.db import models
+from django.forms import ModelForm
 from django.dispatch import receiver
-from django.db.models.signals import pre_save, post_save
+from django.db.models.signals import post_delete, post_save
 from django.contrib import admin
 from django.conf import settings
 
@@ -14,6 +15,11 @@ class Blob(models.Model):
 
   def __unicode__(self):
     return self.file.name
+
+
+class BlobForm(ModelForm):
+    class Meta:
+        model = Blob
 
 admin.site.register(Blob)
 
@@ -46,6 +52,10 @@ class ProcessedBlob(models.Model):
 
   def __unicode__(self):
     return self.blob.file.name
+
+@receiver(post_delete, sender=ProcessedBlob)
+def blob_processor(sender, instance, **kwargs):
+  instance.blob.delete()
 
 admin.site.register(ProcessedBlob)
 

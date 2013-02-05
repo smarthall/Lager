@@ -7,7 +7,8 @@ admin.autodiscover()
 
 urlpatterns = patterns('',
     # Examples:
-    url(r'^$', 'Lager.views.home', name='home'),
+    url(r'^$', 'Lager.views.home'),
+    url(r'^upload/$', 'blobstore.views.upload'),
     # url(r'^Lager/', include('Lager.foo.urls')),
 
     # Admin pages
