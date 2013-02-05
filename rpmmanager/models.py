@@ -33,6 +33,9 @@ class RPM(models.Model):
   def get_file(self):
     return self.procblob.blob.file
 
+  def add_repo(self, repo):
+    RPMinRepo(rpm=self, repo=repo).save()
+
   def process_rpm(self):
     ts = rpm.ts()
     rpm_file = os.path.join(settings.MEDIA_ROOT, self.get_file().name)
@@ -83,6 +86,9 @@ class Repository(models.Model):
 
   def __unicode__(self):
     return self.name
+
+  def add_rpm(self, rpm):
+    RPMinRepo(repo=self, rpm=rpm).save()
 
   def to_disk(self):
     if self.suspended:
@@ -140,15 +146,11 @@ class RPMAdmin(admin.ModelAdmin):
   list_display = ['name', 'arch', 'version', 'release', 'protected']
   inlines = (RPMinRepoInline, )
 
-class RPMinRepoAdmin(admin.ModelAdmin):
-  list_display = ['rpm', 'repo', 'added']
-
 class RepositoryAdmin(admin.ModelAdmin):
   list_display = ['name', 'suspended', 'pushed', 'modified']
   exclude = ['pushed',]
   inlines = (RPMinRepoInline, )
 
 admin.site.register(RPM, RPMAdmin)
-admin.site.register(RPMinRepo, RPMinRepoAdmin)
 admin.site.register(Repository, RepositoryAdmin)
 
