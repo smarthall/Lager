@@ -13,6 +13,12 @@ from blobstore.models import DataBlob
 
 ###### RPM ######
 class RPM(models.Model):
+  """
+  Store an RPM
+  * This model is automatically created when a datablob that is an RPM is uploaded.
+  * Deleting this model deleted the associated datablob
+  * The fields name, version, release, epoch and arch are filled in automatically on save
+  """
   procblob = models.OneToOneField(DataBlob, primary_key=True)
   protected = models.BooleanField(default=False)
   gc = models.BooleanField(default=False)
@@ -74,6 +80,11 @@ def procblob_cleaner(sender, instance, **kwargs):
 
 ###### Repo ######
 class Repository(models.Model):
+  """
+  Represents a repository.
+  * Saving the model causes the model to flush to disk and generate a repo
+  * Setting suspended means that updates wont be flushed to disk
+  """
   name = models.CharField(max_length=64, unique=True)
   suspended = models.BooleanField(default=False)
   pushed = models.DateTimeField(blank=True,null=True)
@@ -125,6 +136,9 @@ def repository_cleaner(sender, instance, **kwargs):
 
 ###### RPMinRepo ######
 class RPMinRepo(models.Model):
+  """
+  The relationship between a repository and the RPMS inside
+  """
   rpm = models.ForeignKey(RPM)
   repo = models.ForeignKey(Repository)
   added = models.DateTimeField(auto_now_add=True)
