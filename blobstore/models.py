@@ -57,6 +57,9 @@ class ProcessedBlob(models.Model):
   mimetype = models.CharField(max_length=100)
   filename = models.CharField(max_length=150)
 
+  class Meta:
+    unique_together = (('hashtype', 'hash'),)
+
   def __unicode__(self):
     return self.blob.file.name
 

@@ -1,5 +1,5 @@
 import sys, os, os.path, rpm
-import subprocess
+import subprocess, shutil
 
 from django.db import models
 from django.contrib import admin
@@ -22,6 +22,9 @@ class RPM(models.Model):
   release = models.CharField(max_length=50)
   epoch = models.CharField(max_length=50,null=True,blank=True)
   arch = models.CharField(max_length=50)
+
+  class Meta:
+    unique_together = (('name', 'version', 'release', 'epoch', 'arch'),)
 
   def __unicode__(self):
     return self.name + '-' + self.version + '-' + self.release + '.' + self.arch
@@ -77,6 +80,9 @@ class Repository(models.Model):
   created = models.DateTimeField(auto_now_add=True)
   rpms = models.ManyToManyField(RPM, through='RPMinRepo', related_name='repositories')
 
+  def get_basedir(self):
+    return os.path.join(settings.MEDIA_ROOT, 'rpmmanager', self.name)
+
   def __unicode__(self):
     return self.name
 
@@ -85,9 +91,13 @@ class RepositoryAdmin(admin.ModelAdmin):
 
 admin.site.register(Repository, RepositoryAdmin)
 
+@receiver(post_delete, sender=Repository)
+def repository_cleaner(sender, instance, **kwargs):
+  shutil.rmtree(instance.get_basedir())
+
 @receiver(post_save, sender=Repository)
 def repository_processor(sender, instance, **kwargs):
-  basedir = os.path.join(settings.MEDIA_ROOT, 'rpmmanager', instance.name)
+  basedir = instance.get_basedir()
 
   # Create relevent directory if it doesnt exist
   if not os.path.exists(basedir):
@@ -108,6 +118,9 @@ class RPMinRepo(models.Model):
   rpm = models.ForeignKey(RPM)
   repo = models.ForeignKey(Repository)
   added = models.DateTimeField(auto_now_add=True)
+
+  class Meta:
+    unique_together = (('rpm', 'repo'),)
 
 class RPMinRepoAdmin(admin.ModelAdmin):
   list_display = ['rpm', 'repo', 'added']
