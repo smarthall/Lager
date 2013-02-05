@@ -12,69 +12,56 @@ from django.contrib import admin
 from django.conf import settings
 from django.core import exceptions
 
-##### Blob Model #####
-class Blob(models.Model):
-  file = models.FileField(upload_to='blobs', max_length=150)
-
-  def __unicode__(self):
-    return self.file.name
-
-
-class BlobForm(ModelForm):
-    class Meta:
-        model = Blob
-
-admin.site.register(Blob)
-
-@receiver(post_save, sender=Blob)
-def blob_processor(sender, instance, **kwargs):
-  processed = ProcessedBlob(blob=instance)
-  hasher = hashlib.new(settings.HASHMETHOD)
-  m = magic.open(magic.MAGIC_MIME_TYPE)
-  m.load()
-  filename = os.path.join(settings.MEDIA_ROOT, instance.file.name)
-  f = open(filename, 'rb')
-  while True:
-     data = f.read(8192)
-     if not data:
-         break
-     hasher.update(data)
-  processed.hashtype = settings.HASHMETHOD
-  processed.hash = hasher.hexdigest()
-  processed.mimetype = m.file(filename)
-  processed.filename = os.path.basename(instance.file.name)
-  processed.save()
-
-@receiver(post_delete, sender=Blob)
-def blob_filecleaner(sender, instance, **kwargs):
-  os.unlink(os.path.join(settings.MEDIA_ROOT, instance.file.name))
-
-##### ProcessedBlob Model #####
-class ProcessedBlob(models.Model):
-  blob = models.OneToOneField(Blob, primary_key=True)
-  hashtype = models.CharField(max_length=32)
-  hash = models.CharField(max_length=255)
-  mimetype = models.CharField(max_length=100)
-  filename = models.CharField(max_length=150)
+class DataBlob(models.Model):
+  blob = models.FileField(upload_to='datablobs', max_length=150)
+  hashtype = models.CharField(max_length=32, blank=True)
+  hash = models.CharField(max_length=255, blank=True)
+  mimetype = models.CharField(max_length=100, blank=True)
+  filename = models.CharField(max_length=150, blank=True)
 
   class Meta:
     unique_together = (('hashtype', 'hash'),)
 
   def __unicode__(self):
-    return self.blob.file.name
+    return self.blob.name
 
   def get_file(self):
-    self.blob.file
+    self.blob
 
-class ProcessedBlobAdmin(admin.ModelAdmin):
+  def blob_process(self):
+    hasher = hashlib.new(settings.HASHMETHOD)
+    m = magic.open(magic.MAGIC_MIME_TYPE)
+    m.load()
+    filename = os.path.join(settings.MEDIA_ROOT, self.blob.name)
+    f = open(filename, 'rb')
+    while True:
+       data = f.read(8192)
+       if not data:
+           break
+       hasher.update(data)
+    self.hashtype = settings.HASHMETHOD
+    self.hash = hasher.hexdigest()
+    self.mimetype = m.file(filename)
+    self.filename = os.path.basename(self.blob.name)
+
+  def save(self, *args, **kwargs):
+    if self.id == None: # Save the file to disk if we havent yet
+      super(DataBlob, self).save(*args, **kwargs)
+    self.blob_process()
+    super(DataBlob, self).save(*args, **kwargs) # Call the "real" save() method.
+
+class DataBlobForm(ModelForm):
+    class Meta:
+        model = DataBlob
+        exclude = ['hashtype', 'hash', 'mimetype', 'filename']
+
+class DataBlobAdmin(admin.ModelAdmin):
   list_display = ('filename', 'mimetype', 'hashtype', 'hash')
+  exclude = ['hashtype', 'hash', 'mimetype', 'filename']
 
-@receiver(post_delete, sender=ProcessedBlob)
-def blob_cleaner(sender, instance, **kwargs):
-  try:
-    instance.blob.delete()
-  except exceptions.ObjectDoesNotExist:
-    pass
+admin.site.register(DataBlob, DataBlobAdmin)
 
-admin.site.register(ProcessedBlob, ProcessedBlobAdmin)
+@receiver(post_delete, sender=DataBlob)
+def blob_filecleaner(sender, instance, **kwargs):
+  os.unlink(os.path.join(settings.MEDIA_ROOT, instance.blob.name))
 

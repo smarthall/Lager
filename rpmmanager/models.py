@@ -9,11 +9,11 @@ from django.core import exceptions
 from django.conf import settings
 from django.utils import timezone
 
-from blobstore.models import ProcessedBlob
+from blobstore.models import DataBlob
 
 ###### RPM ######
 class RPM(models.Model):
-  procblob = models.OneToOneField(ProcessedBlob, primary_key=True)
+  procblob = models.OneToOneField(DataBlob, primary_key=True)
   protected = models.BooleanField(default=False)
   gc = models.BooleanField(default=False)
 
@@ -33,7 +33,7 @@ class RPM(models.Model):
   def get_file(self):
     return self.procblob.blob.file
 
-@receiver(post_save, sender=ProcessedBlob)
+@receiver(post_save, sender=DataBlob)
 def blob_processor(sender, instance, **kwargs):
   if (instance.mimetype == 'application/x-rpm'):
     new = RPM()
