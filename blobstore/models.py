@@ -11,6 +11,7 @@ from django.db.models.signals import post_delete, post_save
 from django.contrib import admin
 from django.conf import settings
 from django.core import exceptions
+from django.db import IntegrityError
 
 class DataBlob(models.Model):
   blob = models.FileField(upload_to='datablobs', max_length=150)
@@ -48,7 +49,11 @@ class DataBlob(models.Model):
     if self.id == None: # Save the file to disk if we havent yet
       super(DataBlob, self).save(*args, **kwargs)
     self.blob_process()
-    super(DataBlob, self).save(*args, **kwargs) # Call the "real" save() method.
+    try:
+      super(DataBlob, self).save(*args, **kwargs) # Call the "real" save() method.
+    except IntegrityError:
+      self.delete()
+      raise
 
 @receiver(post_delete, sender=DataBlob)
 def blobdelete_processor(sender, instance, **kwargs):
