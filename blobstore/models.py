@@ -14,10 +14,10 @@ from django.core import exceptions
 
 class DataBlob(models.Model):
   blob = models.FileField(upload_to='datablobs', max_length=150)
-  hashtype = models.CharField(max_length=32, blank=True)
-  hash = models.CharField(max_length=255, blank=True)
-  mimetype = models.CharField(max_length=100, blank=True)
-  filename = models.CharField(max_length=150, blank=True)
+  hashtype = models.CharField(max_length=32, blank=True, editable=False)
+  hash = models.CharField(max_length=255, blank=True, editable=False)
+  mimetype = models.CharField(max_length=100, blank=True, editable=False)
+  filename = models.CharField(max_length=150, blank=True, editable=False)
 
   class Meta:
     unique_together = (('hashtype', 'hash'),)
@@ -50,18 +50,16 @@ class DataBlob(models.Model):
     self.blob_process()
     super(DataBlob, self).save(*args, **kwargs) # Call the "real" save() method.
 
+  def delete(self, *args, **kwargs):
+    super(DataBlob, self).delete(*args, **kwargs) # Call the "real" delete() method.
+    os.unlink(os.path.join(settings.MEDIA_ROOT, self.blob.name))
+
 class DataBlobForm(ModelForm):
     class Meta:
         model = DataBlob
-        exclude = ['hashtype', 'hash', 'mimetype', 'filename']
 
 class DataBlobAdmin(admin.ModelAdmin):
   list_display = ('filename', 'mimetype', 'hashtype', 'hash')
-  exclude = ['hashtype', 'hash', 'mimetype', 'filename']
 
 admin.site.register(DataBlob, DataBlobAdmin)
-
-@receiver(post_delete, sender=DataBlob)
-def blob_filecleaner(sender, instance, **kwargs):
-  os.unlink(os.path.join(settings.MEDIA_ROOT, instance.blob.name))
 

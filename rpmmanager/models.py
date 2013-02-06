@@ -4,7 +4,7 @@ import subprocess, shutil
 from django.db import models
 from django.contrib import admin
 from django.dispatch import receiver
-from django.db.models.signals import post_delete, post_save, pre_save
+from django.db.models.signals import pre_delete, post_delete, post_save, pre_save
 from django.core import exceptions
 from django.conf import settings
 from django.utils import timezone
@@ -21,14 +21,14 @@ class RPM(models.Model):
   """
   procblob = models.OneToOneField(DataBlob, primary_key=True)
   protected = models.BooleanField(default=False)
-  gc = models.BooleanField(default=False)
+  gc = models.BooleanField(default=False,editable=False)
 
   # Set automatically on save
-  name = models.CharField(max_length=100)
-  version = models.CharField(max_length=50)
-  release = models.CharField(max_length=50)
-  epoch = models.CharField(max_length=50,null=True,blank=True)
-  arch = models.CharField(max_length=50)
+  name = models.CharField(max_length=100,editable=False)
+  version = models.CharField(max_length=50,editable=False)
+  release = models.CharField(max_length=50,editable=False)
+  epoch = models.CharField(max_length=50,null=True,blank=True,editable=False)
+  arch = models.CharField(max_length=50,editable=False)
 
   class Meta:
     unique_together = (('name', 'version', 'release', 'epoch', 'arch'),)
@@ -87,7 +87,6 @@ class Repository(models.Model):
   """
   name = models.CharField(max_length=64, unique=True)
   suspended = models.BooleanField(default=False)
-  pushed = models.DateTimeField(blank=True,null=True)
   modified = models.DateTimeField(auto_now=True)
   created = models.DateTimeField(auto_now_add=True)
   rpms = models.ManyToManyField(RPM, through='RPMinRepo', related_name='repositories')
@@ -127,18 +126,16 @@ class Repository(models.Model):
     # Prepare the repository
     subprocess.call(['createrepo', '-q', '--update', '--baseurl', basedir, basedir])
 
+    # Mark the time
+    self.save()
+
     # Success!
     return True
 
-  def save(self, *args, **kwargs):
-    if not self.id == None:
-      if self.to_disk():
-        self.updated = timezone.now()
-    super(Repository, self).save(*args, **kwargs) # Call the "real" save() method.
-
-@receiver(post_delete, sender=Repository)
-def repository_cleaner(sender, instance, **kwargs):
-  shutil.rmtree(instance.get_basedir())
+  def delete(self, *args, **kwargs):
+      self.suspended = True
+      super(Repository, self).delete(*args, **kwargs) # Call the "real" delete() method.
+      shutil.rmtree(self.get_basedir())
 
 ###### RPMinRepo ######
 class RPMinRepo(models.Model):
@@ -149,16 +146,16 @@ class RPMinRepo(models.Model):
   repo = models.ForeignKey(Repository)
   added = models.DateTimeField(auto_now_add=True)
 
+  def delete(self, *args, **kwargs):
+      super(RPMinRepo, self).delete(*args, **kwargs) # Call the "real" delete() method.
+      self.repo.to_disk()
+
+  def save(self, *args, **kwargs):
+      super(RPMinRepo, self).save(*args, **kwargs) # Call the "real" save() method.
+      self.repo.to_disk()
+
   class Meta:
     unique_together = (('rpm', 'repo'),)
-
-@receiver(post_save, sender=RPMinRepo)
-def reposave_processor(sender, instance, **kwargs):
-  instance.repo.save()
-
-@receiver(post_delete, sender=RPMinRepo)
-def repodelete_processor(sender, instance, **kwargs):
-  instance.repo.save()
 
 # Admin objects
 class RPMinRepoInline(admin.TabularInline):
@@ -166,13 +163,11 @@ class RPMinRepoInline(admin.TabularInline):
   extra = 1
 
 class RPMAdmin(admin.ModelAdmin):
-  readonly_fields = ['gc', 'name', 'version', 'release', 'epoch', 'arch']
   list_display = ['name', 'arch', 'version', 'release', 'protected']
   inlines = (RPMinRepoInline, )
 
 class RepositoryAdmin(admin.ModelAdmin):
-  list_display = ['name', 'suspended', 'pushed', 'modified']
-  exclude = ['pushed',]
+  list_display = ['name', 'suspended', 'modified']
   inlines = (RPMinRepoInline, )
 
 admin.site.register(RPM, RPMAdmin)
