@@ -11,6 +11,7 @@ from django.db.models.signals import post_delete, post_save
 from django.contrib import admin
 from django.conf import settings
 from django.core import exceptions
+from django.core.urlresolvers import reverse
 from django.db import IntegrityError
 
 class DataBlob(models.Model):
@@ -28,6 +29,9 @@ class DataBlob(models.Model):
 
   def get_file(self):
     self.blob
+
+  def get_absolute_url(self):
+   return reverse('blobstore.views.detail', None, [str(self.id)])
 
   def blob_process(self):
     hasher = hashlib.new(settings.HASHMETHOD)

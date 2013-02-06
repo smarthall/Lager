@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{% block content %}
+<pre>
+Name: {{ blob.filename }}
+Hash: {{ blob.hash }}
+Mime: {{ blob.mimetype }}
+</pre>
+{% endblock %}

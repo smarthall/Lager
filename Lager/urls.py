@@ -6,13 +6,12 @@ from django.contrib import admin
 from django.contrib.sites.models import Site
 
 admin.autodiscover()
-admin.site.unregister(Site)
+#admin.site.unregister(Site)
 
 urlpatterns = patterns('',
     # Examples:
     url(r'^$', 'Lager.views.home'),
-    url(r'^upload/$', 'blobstore.views.upload'),
-    # url(r'^Lager/', include('Lager.foo.urls')),
+    url(r'^blobstore/', include('blobstore.urls')),
 
     # Admin pages
     url(r'^admin/doc/', include('django.contrib.admindocs.urls')),

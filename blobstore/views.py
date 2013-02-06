@@ -1,6 +1,6 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponseRedirect
-from models import DataBlobForm
+from models import DataBlob, DataBlobForm
 
 def upload(request):
   if request.method == 'POST':
@@ -14,4 +14,8 @@ def upload(request):
   return render(request, 'blobstore_upload.html', {
       'form': form,
   })
+
+def detail(request, datablob_id):
+  db = get_object_or_404(DataBlob, pk=datablob_id)
+  return render(request, 'blobstore_detail.html', {'blob': db})
 
