@@ -1,4 +1,6 @@
-from django.shortcuts import render_to_response
+from django.shortcuts import render
+from blobstore.models import DataBlobForm
 
 def home(request):
-    return render_to_response('index.html', {})
+    form = DataBlobForm()
+    return render(request, 'index.html', {'form': form})

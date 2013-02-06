@@ -1,5 +1,11 @@
 {% extends "base.html" %}
 
 {% block content %}
+<h1>Blob Manager</h1>
 <p>Content goes here</p>
+<h2>Upload</h2>
+<form enctype="multipart/form-data" action="{% url blobstore.views.upload %}" method="post">{% csrf_token %}
+{{ form.as_p }}
+<input type="submit" value="Submit" />
+</form>
 {% endblock %}
