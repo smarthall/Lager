@@ -50,9 +50,9 @@ class DataBlob(models.Model):
     self.blob_process()
     super(DataBlob, self).save(*args, **kwargs) # Call the "real" save() method.
 
-  def delete(self, *args, **kwargs):
-    super(DataBlob, self).delete(*args, **kwargs) # Call the "real" delete() method.
-    os.unlink(os.path.join(settings.MEDIA_ROOT, self.blob.name))
+@receiver(post_delete, sender=DataBlob)
+def blobdelete_processor(sender, instance, **kwargs):
+  os.unlink(os.path.join(settings.MEDIA_ROOT, instance.blob.name))
 
 class DataBlobForm(ModelForm):
     class Meta:

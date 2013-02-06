@@ -59,10 +59,12 @@ class RPM(models.Model):
     self.epoch = hdr[rpm.RPMTAG_EPOCH]
     self.arch = hdr[rpm.RPMTAG_ARCH]
 
+  def delete(self, *args, **kwargs):
+    instance.procblob.delete()
+
   def save(self, *args, **kwargs):
     self.process_rpm()
     super(RPM, self).save(*args, **kwargs) # Call the "real" save() method.
-
 
 @receiver(post_save, sender=DataBlob)
 def blob_processor(sender, instance, **kwargs):
@@ -70,13 +72,6 @@ def blob_processor(sender, instance, **kwargs):
     new = RPM()
     new.procblob = instance
     new.save()
-
-@receiver(post_delete, sender=RPM)
-def procblob_cleaner(sender, instance, **kwargs):
-  try:
-    instance.procblob.delete()
-  except exceptions.ObjectDoesNotExist:
-    pass
 
 ###### Repo ######
 class Repository(models.Model):
@@ -146,16 +141,16 @@ class RPMinRepo(models.Model):
   repo = models.ForeignKey(Repository)
   added = models.DateTimeField(auto_now_add=True)
 
-  def delete(self, *args, **kwargs):
-      super(RPMinRepo, self).delete(*args, **kwargs) # Call the "real" delete() method.
-      self.repo.to_disk()
-
   def save(self, *args, **kwargs):
       super(RPMinRepo, self).save(*args, **kwargs) # Call the "real" save() method.
       self.repo.to_disk()
 
   class Meta:
     unique_together = (('rpm', 'repo'),)
+
+@receiver(post_delete, sender=RPMinRepo)
+def rpmdelete_processor(sender, instance, **kwargs):
+  instance.repo.to_disk()
 
 # Admin objects
 class RPMinRepoInline(admin.TabularInline):
