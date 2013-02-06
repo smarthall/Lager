@@ -12,6 +12,7 @@ urlpatterns = patterns('',
     # Examples:
     url(r'^$', 'Lager.views.home'),
     url(r'^blobstore/', include('blobstore.urls')),
+    url(r'^filehandler/', include('filehandler.urls')),
 
     # Admin pages
     url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
