@@ -111,7 +111,13 @@ class Repository(models.Model):
     if not os.path.exists(basedir):
       os.makedirs(basedir)
 
-    # Link the RPMS in, removing any that no longer exist
+    # Remove rpms not in the list
+    filelist = map(lambda x: x.get_file().name, self.rpms.all())
+    for f in os.listdir(basedir):
+      if f.endswith('.rpm') and not f in filelist:
+        os.unlink(os.path.join(basedir, f))
+
+    # Link the new RPMS in
     for rpm in self.rpms.all():
       rpmpath = os.path.join(settings.MEDIA_ROOT, rpm.get_file().name)
       newpath = os.path.join(basedir, os.path.basename(rpm.get_file().name))
@@ -148,6 +154,10 @@ class RPMinRepo(models.Model):
 
 @receiver(post_save, sender=RPMinRepo)
 def reposave_processor(sender, instance, **kwargs):
+  instance.repo.save()
+
+@receiver(post_delete, sender=RPMinRepo)
+def repodelete_processor(sender, instance, **kwargs):
   instance.repo.save()
 
 # Admin objects
