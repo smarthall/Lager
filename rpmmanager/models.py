@@ -19,7 +19,7 @@ class RPM(models.Model):
   * Deleting this model deleted the associated datablob
   * The fields name, version, release, epoch and arch are filled in automatically on save
   """
-  procblob = models.OneToOneField(DataBlob, primary_key=True)
+  procblob = models.OneToOneField(DataBlob, primary_key=True,editable=False)
   protected = models.BooleanField(default=False)
   gc = models.BooleanField(default=False,editable=False)
 
@@ -160,6 +160,12 @@ class RPMinRepoInline(admin.TabularInline):
 class RPMAdmin(admin.ModelAdmin):
   list_display = ['name', 'arch', 'version', 'release', 'protected']
   inlines = (RPMinRepoInline, )
+
+  def has_add_permission(self, request):
+    return False
+
+  def has_delete_permission(self, request, obj=None):
+    return False
 
 class RepositoryAdmin(admin.ModelAdmin):
   list_display = ['name', 'suspended', 'modified']
